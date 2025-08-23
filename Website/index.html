@@ -1,0 +1,634 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>AI Expense & Budgeting Assistant</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 2rem;
+}
+#navbar {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 2rem;
+}
+#navbar a {
+    text-decoration: none;
+    color: #333;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+}
+#navbar a:hover {
+    background-color: #f0f0f0;
+}
+#output {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background: #f9f9f9;
+}
+h2 {
+    margin-bottom: 0.5rem;
+}
+button {
+    margin-top: 1rem;
+}
+#logo {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #4CAF50;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+table, th, td {
+    border: 1px solid #ddd;
+}
+th, td {
+    padding: 8px;
+    text-align: left;
+}
+th {
+    background-color: #f4f4f4;
+}
+.view-receipt-btn {
+    margin-top: 10px;
+    padding: 6px 12px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.view-receipt-btn:hover {
+    background-color: #45a049;
+}
+#receipt-details {
+    display: none;
+    margin-top: 20px;
+}
+.receipt-image {
+    width: 300px;
+    height: auto;
+    margin-right: 20px;
+}
+.items-table {
+    border-collapse: collapse;
+    margin-top: 1rem;
+    width: 100%;
+}
+.items-table th, .items-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+}
+#category-chart {
+    margin-top: 2rem;
+}
+
+.upload-container {
+  max-width: 400px;
+  margin: 0 auto;
+  text-align: center;
+  padding: 2rem;
+  border: 1px solid #ccc;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  background-color: #f9f9f9;
+}
+
+.file-input {
+  margin: 1rem 0;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  width: 100%;
+}
+
+.upload-btn {
+  background-color: #4CAF50;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  width: 100%;
+}
+
+.upload-btn:hover {
+  background-color: #45a049;
+}
+
+.uploading-message {
+  display: none;
+  margin-top: 1rem;
+  color: green;
+  font-weight: bold;
+}
+
+#chat-box div {
+margin-bottom: 8px;
+}
+
+</style>
+</head>
+<body>
+
+  <div id="logo">Expense Tracker</div>
+
+<div id="navbar">
+  <a href="#dashboard" onclick="showSection('dashboard')">Dashboard</a>
+  <a href="#upload" onclick="showSection('upload')">Upload Receipts</a>
+  <a href="#totalExpense" onclick="showSection('category-details')">Total Expense</a>
+  <a href="#chat-interface" onclick="showSection('chat-interface')">Chat Interface</a>
+
+ <!-- <a href="#forecast-section" onclick="showSection('forecast-section')">Predict Expense</a> -->
+
+</div>
+
+  <section id="dashboard">
+    <h2>Welcome to the Dashboard</h2>
+    <p>This section shows an overview of your expenses and receipts.</p>
+    <label for="monthPicker"><strong>Select Month:</strong></label>
+    <input type="month" id="monthPicker" onchange="onMonthChange()" />
+
+    <div id="receiptList"></div>
+  </section>
+
+<section id="upload" style="display: none;">
+  <div class="upload-container">
+    <h1>Upload a Receipt</h1>
+    <input type="file" id="receiptFile" class="file-input" />
+    <button onclick="uploadReceipt()" class="upload-btn">Upload & Analyze</button>
+    <div id="uploadingMessage" class="uploading-message">
+      Uploading... Please wait.
+    </div>
+  </div>
+</section>
+
+  <section id="category-details">
+    <h1>Total Expense</h1>
+    <p id="selected-month" style="text-align: center; font-weight: bold;"></p>
+    <div id="category-chart" style="max-width: 400px; margin: auto;">
+      <canvas id="categoryPieChart" style="width: 100%; height: auto;"></canvas>
+    </div>
+    <table id="category-items-table" class="items-table"></table>
+  </section>
+
+
+  <section id="receipt-details">
+    <h2>Receipt Details</h2>
+    <div id="receipt-info"></div>
+    <table id="items-table" class="items-table"></table>
+  </section>
+
+  <section id="chat-interface" style="margin-top: 2rem;">
+  <h2>Ask AI Expense Assistant</h2>
+  <div id="chat-box" style="border: 1px solid #ccc; padding: 1rem; height: 300px; overflow-y: auto; background: #f9f9f9;"></div>
+
+  <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+    <input type="text" id="user-input" placeholder="Type your question..." style="flex: 1; padding: 8px;" />
+    <button onclick="sendMessageToLex()" style="padding: 8px 16px; background-color: #4CAF50; color: white; border: none; border-radius: 4px;">Send</button>
+  </div>
+</section>
+
+  <section id="forecast-section" style="display: none;">
+  <h2>Predict Future Expenses</h2>
+  <div style="max-width: 400px; margin: auto;">
+    <label for="forecastCategory"><strong>Select Category:</strong></label>
+    <select id="forecastCategory" style="width: 100%; padding: 8px; margin-top: 8px;">
+      <option value="grocery">Grocery</option>
+      <option value="food">Food</option>
+      <option value="transport">Transport</option>
+      <option value="gift">Gift</option>
+      <option value="electronics">Electronics</option>
+      <option value="cosmetics">Cosmetics</option>
+      <option value="apparel">Apparel</option>
+      <option value="education">Education</option>
+      <option value="household">Household</option>
+      <option value="health">Health</option>
+      <option value="other">Other</option>
+    </select>
+
+    <button onclick="predictExpense()" class="upload-btn" style="margin-top: 1rem;">Predict Next Month Expense</button>
+
+    <div id="forecastResult" style="margin-top: 1rem; font-weight: bold;"></div>
+  </div>
+</section>
+
+
+  <script>
+    "use strict";
+    const serverUrl = "http://127.0.0.1:8000";
+
+    let receipts = []; // Declare a global variable to store the receipts
+    let categoryChartInstance = null;
+
+    window.onload = function() {
+      showSection('dashboard');
+      const today = new Date();
+  const year = today.getFullYear();
+  const month = (today.getMonth() + 1).toString().padStart(2, "0");
+  document.getElementById("monthPicker").value = `${year}-${month}`;
+  fetchReceiptsForMonth(year, month);
+    //  fetchReceipts();
+    };
+
+    // Fetch all receipts from the server
+    async function fetchReceipts() {
+      const url = `${serverUrl}/receipts`; // URL to fetch all receipts
+
+      try {
+        const response = await fetch(url);
+        if (response.ok) {
+          const data = await response.json();
+          receipts = data;  // Store the fetched receipts in the global variable
+          displayReceipts(data);
+          displayCategoryChart(data); // Update chart on page load
+        } else {
+          alert("Error fetching receipts.");
+        }
+      } catch (error) {
+        console.error("Error fetching receipts:", error);
+        alert("Error fetching receipts.");
+      }
+    }
+
+    // Display receipts on the dashboard in a table format
+    function displayReceipts(receipts) {
+      const receiptList = document.getElementById('receiptList');
+      receiptList.innerHTML = '';  // Clear previous receipts
+
+      if (receipts.length === 0) {
+        receiptList.innerHTML = '<p>No receipts found.</p>';
+      } else {
+        const table = document.createElement('table');
+        table.innerHTML = `
+          <thead>
+            <tr>
+              <th>Receipt Name</th>
+              <th>File Name</th>
+              <th>Date of Purchase</th>
+              <th>Total</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+          </tbody>
+        `;
+        const tbody = table.querySelector('tbody');
+
+        receipts.forEach(receipt => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${receipt.receiptName}</td>
+            <td>${receipt.FileName}</td>
+            <td>${receipt.dateOfPurchase}</td>
+            <td>$${receipt.TotalPrice}</td>
+            <td><button class="view-receipt-btn" onclick="viewReceipt(${receipt.ReceiptID})">View Receipt</button></td>
+          `;
+          tbody.appendChild(row);
+        });
+
+        receiptList.appendChild(table);
+      }
+    }
+
+    // Display total expense by category in a pie chart
+          function displayCategoryChart(receipts, year = null, month = null) {
+  const categoryTotals = {};
+  const categoryMap = {};
+
+  receipts.forEach(receipt => {
+    receipt.items.forEach(item => {
+      if (!categoryTotals[item.category]) {
+        categoryTotals[item.category] = 0;
+        categoryMap[item.category] = [];
+      }
+      categoryTotals[item.category] += parseFloat(item.price);
+      categoryMap[item.category].push({ ...item, receiptName: receipt.receiptName, date: receipt.dateOfPurchase });
+    });
+  });
+
+  const monthNames = ["January", "February", "March", "April", "May", "June",
+                      "July", "August", "September", "October", "November", "December"];
+  const selectedMonthText = (year && month)
+    ? `${monthNames[parseInt(month) - 1]} ${year}`
+    : "";
+
+  document.getElementById('selected-month').textContent = selectedMonthText;
+
+  const categories = Object.keys(categoryTotals);
+  const amounts = categories.map(category => categoryTotals[category]);
+  const ctx = document.getElementById('categoryPieChart').getContext('2d');
+
+  if (categoryChartInstance) {
+    categoryChartInstance.destroy();
+  }
+
+  categoryChartInstance = new Chart(ctx, {
+    type: 'pie',
+    data: {
+      labels: categories,
+      datasets: [{
+        data: amounts,
+        backgroundColor: ['#FF5733', '#33FF57', '#3357FF', '#FF33A1', '#F4D03F'],
+        hoverBackgroundColor: ['#FF5733', '#33FF57', '#3357FF', '#FF33A1', '#F4D03F']
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'top' },
+        tooltip: {
+          callbacks: {
+            label: function(tooltipItem) {
+              return `${tooltipItem.label}: $${tooltipItem.raw.toFixed(2)}`;
+            }
+          }
+        }
+      },
+      onClick: function(evt, activeElements) {
+        if (activeElements.length > 0) {
+          const index = activeElements[0].index;
+          const selectedCategory = this.data.labels[index];
+          showCategoryDetails(selectedCategory, categoryMap[selectedCategory]);
+        }
+      }
+    }
+  });
+}
+
+
+
+
+    // View a single receipt's details
+    function viewReceipt(receiptID) {
+  const selectedReceipt = receipts.find(receipt => receipt.ReceiptID.toString() === receiptID.toString());
+  if (selectedReceipt) {
+    // Hide all other sections and show only receipt-details
+    showSection('receipt-details');
+
+    const receiptInfo = document.getElementById('receipt-info');
+    const itemsTable = document.getElementById('items-table');
+
+    // Inject content into receipt-details
+          receiptInfo.innerHTML = `
+            <div style="
+              display: flex;
+              align-items: flex-start;
+              justify-content: center;
+              gap: 40px;
+              margin-top: 20px;
+              padding: 20px;
+              border: 1px solid #ccc;
+              border-radius: 12px;
+              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+              background-color: #ffffff;
+              max-width: 800px;
+              margin-left: auto;
+              margin-right: auto;
+            ">
+              <div style="flex: 1;">
+                <h3 style="margin-bottom: 10px; color: #4CAF50;">File: ${selectedReceipt.receiptName}</h3>
+                <p><strong>Date of Purchase:</strong> ${selectedReceipt.dateOfPurchase}</p>
+                <p><strong>Total Price:</strong> $${selectedReceipt.TotalPrice}</p>
+              </div>
+              <div style="flex-shrink: 0;">
+                <img
+                  src="https://expense-tracker-301380198.s3.us-east-1.amazonaws.com/${selectedReceipt.FileName}"
+                  class="receipt-image"
+                  alt="Receipt Image"
+                  style="max-width: 300px; border-radius: 8px; border: 1px solid #ddd;"
+                />
+              </div>
+            </div>
+          `;
+
+          // Populate the items table
+          itemsTable.innerHTML = `
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Category</th>
+                <th>Price</th>
+              </tr>
+            </thead>
+            <tbody>
+            </tbody>
+          `;
+          const tbody = itemsTable.querySelector('tbody');
+          selectedReceipt.items.forEach(item => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td>${item.item}</td>
+              <td>${item.category}</td>
+              <td>$${item.price}</td>
+            `;
+            tbody.appendChild(row);
+          });
+        }
+      }
+
+
+    async function uploadReceipt() {
+    const fileInput = document.getElementById('receiptFile');
+    const file = fileInput.files[0];
+    const uploadingMessage = document.getElementById('uploadingMessage');
+
+    // Check if file is selected before proceeding
+    if (!file) {
+        alert("Please select a file to upload.");
+        return;
+    }
+
+    // Show "Uploading..." message
+    uploadingMessage.style.display = "block";
+
+    // Convert file to Base64
+    let converter = new Promise(function(resolve, reject) {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result.toString().replace(/^data:(.*,)?/, ''));
+        reader.onerror = (error) => reject(error);
+    });
+
+    try {
+        let encodedString = await converter;
+
+        // Clear the file input after processing
+        fileInput.value = "";
+
+        // Send the file to the server
+        const response = await fetch(serverUrl + "/upload", {
+            method: "POST",
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ filename: file.name, filebytes: encodedString })
+        });
+
+          if (response.ok) {
+              const responseData = await response.json();
+              console.log('Upload successful:', responseData);
+              setTimeout(() => window.location.reload(), 500);
+          } else {
+              const errorResponse = await response.json();
+              throw new Error(errorResponse.error || 'Failed to upload file.');
+          }
+
+        } catch (error) {
+        console.error("Error during upload:", error);
+        alert(`Error: Invalid Image`);
+        uploadingMessage.style.display = "none";
+    }
+}
+
+    function showSection(sectionId) {
+  const sections = ['dashboard', 'upload', 'category-details', 'receipt-details','chat-interface', 'forecast-section'];
+
+  sections.forEach(id => {
+    const section = document.getElementById(id);
+    if (section) {
+      section.style.display = (id === sectionId) ? 'block' : 'none';
+    }
+  });
+
+  // Optionally hide receipt details when switching pages
+  if (sectionId !== 'receipt-details') {
+    document.getElementById('receipt-details').style.display = 'none';
+  }
+}
+
+    function onMonthChange() {
+  const monthInput = document.getElementById("monthPicker").value; // Format: yyyy-mm
+  const [year, month] = monthInput.split("-");
+  fetchReceiptsForMonth(year, month);
+}
+
+    async function fetchReceiptsForMonth(year, month) {
+  const url = `${serverUrl}/receipts/${year}/${month}`;
+
+  try {
+    const response = await fetch(url);
+    if (response.ok) {
+      const data = await response.json();
+      receipts = data;
+      displayReceipts(data);
+      displayCategoryChart(data, year, month);
+    } else {
+      alert("No receipts found for selected month.");
+      document.getElementById('receiptList').innerHTML = "<p>No receipts found.</p>";
+    }
+  } catch (error) {
+    console.error("Error fetching receipts:", error);
+  }
+}
+
+async function sendMessageToLex() {
+  const input = document.getElementById("user-input").value.trim();
+  const chatBox = document.getElementById("chat-box");
+
+  if (!input) return;
+
+  // Show user message
+  chatBox.innerHTML += `<div><strong>You:</strong> ${input}</div>`;
+  chatBox.scrollTop = chatBox.scrollHeight;
+
+  // Parse month, year, and category
+  const monthRegex = /(January|February|March|April|May|June|July|August|September|October|November|December)/i;
+  const yearRegex = /(20\d{2})/;
+  const categoryRegex = /(grocery|food|transport|gift|electronics|cosmetics|apparel|education|household|health|other)/i;
+
+  const month = input.match(monthRegex)?.[0] || null;
+  const year = input.match(yearRegex)?.[0] || null;
+  const category = input.match(categoryRegex)?.[0] || null;
+
+  let intentName = "HelpIntent";
+  const slots = {};
+
+  // Determine intent based on input pattern
+  if (/total/i.test(input) || /overall/i.test(input)) {
+    intentName = "GetTotalExpenseSummary";
+  } else if (month && year && category) {
+    intentName = "GetCategoryExpense";
+    slots.month = month;
+    slots.year = year;
+    slots.category = category;
+  } else if (month && year) {
+    intentName = "GetMonthlyExpense";
+    slots.month = month;
+    slots.year = year;
+  }
+
+  try {
+    const response = await fetch("http://127.0.0.1:8000/lex/expense", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        currentIntent: {
+          name: intentName,
+          slots: slots
+        }
+      })
+    });
+
+    const data = await response.json();
+    const botMessage = data.dialogAction?.message?.content || "Sorry, I didn't understand that.";
+    chatBox.innerHTML += `<div><strong>Bot:</strong> ${botMessage}</div>`;
+    document.getElementById("user-input").value = "";
+    chatBox.scrollTop = chatBox.scrollHeight;
+  } catch (error) {
+    console.error("Lex error:", error);
+    chatBox.innerHTML += `<div style="color:red;"><strong>Bot:</strong> Error talking to server.</div>`;
+  }
+}
+
+function showCategoryDetails(category, items) {
+  showSection('category-details');
+
+
+  const tableId = 'category-items-table';
+  let table = document.getElementById(tableId);
+
+  if (!table) {
+    table = document.createElement('table');
+    table.id = tableId;
+    table.className = "items-table";
+  }
+
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th>Category</th>
+        <th>Price</th>
+        <th>Receipt</th>
+        <th>Date</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${items.map(item => `
+        <tr>
+          <td>${item.item}</td>
+          <td>${item.category}</td>
+          <td>$${item.price}</td>
+          <td>${item.receiptName}</td>
+          <td>${item.date}</td>
+        </tr>`).join('')}
+    </tbody>
+  `;
+}
+
+
+  </script>
+</body>
+</html>
